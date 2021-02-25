@@ -6,7 +6,7 @@ International Joint Conference on Artificial Intelligence (IJCAI), 2020
 
 + Run `python3 main.py`
 
-### If you find the code helpful, please consider cite_
+### If you find the code helpful, please consider cite
 
 ```
 @inproceedings{luo2020teamsports,
