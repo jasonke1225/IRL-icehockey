@@ -42,8 +42,10 @@ def run(csv_dir, mg, HorA, save_dir, deter):
                 pickle.dump(reward, f)
         
 if __name__ == '__main__':
-    csv_dir = '/home/yudong/Documents/Slgq/data'
-    save_dir = '/home/yudong/Documents/Slgq/save_reward'
+    # csv_dir = '/home/jasonke/Documents/Slgq/data'
+    # save_dir = '/home/jasonke/Documents/Slgq/save_reward'
+    csv_dir = '/home/jasonke/桌面/data_science_project/IRL-icehockey/Slgq/data'
+    save_dir = '/home/jasonke/桌面/data_science_project/IRL-icehockey/Slgq/save_reward'
     mg = MarkovGame(csv_dir)
     run(csv_dir, mg, 'Home', save_dir, True)
     run(csv_dir, mg, 'Away', save_dir, True)

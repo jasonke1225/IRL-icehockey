@@ -72,7 +72,7 @@ def extract_demonstrations(csv_dir, f):
 
 def test_extract_demonstrations():
     d = {}
-    csv_dir = '/home/yudong/Documents/Slgq/data'
+    csv_dir = '/home/jasonke/桌面/data_science_project/IRL-icehockey/result'
     file_all = os.listdir(csv_dir)
     for file in file_all:
         trajs = extract_demonstrations(csv_dir, file)

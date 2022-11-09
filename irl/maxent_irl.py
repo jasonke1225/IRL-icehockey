@@ -51,6 +51,7 @@ def compute_state_visit_freq(feat_map, mdp, trajs, policy, deterministic):
     for episode in trajs:
         begin_idx = mdp.s2idx[ episode[0] ]
         mu[begin_idx, 0] += 1
+    # 統計下來的出現平率
     mu[:, 0] = mu[:, 0] / len(trajs)
 
     for s in mdp.s:
@@ -91,8 +92,12 @@ def maxent_irl(feat_map, mdp, gamma, trajs, theta, rbg, lr, deterministic=False)
     state_exp = compute_state_expectation(feat_map, mdp, trajs)
     # compute reward
     reward = np.dot(feat_map, theta)
+    
+    print(reward.shape)
+    print(np.array(theta).shape)
     # compute policy
     _, policy = value_iteration(mdp, reward, gamma, error=0.01, deterministic=deterministic)
+    # print(policy)
     # compute state visit frequency
     svf = compute_state_visit_freq(feat_map, mdp, trajs, policy, deterministic=deterministic)
     # compute panelty
@@ -100,6 +105,8 @@ def maxent_irl(feat_map, mdp, gamma, trajs, theta, rbg, lr, deterministic=False)
     gp = gp * (reward - rbg)
     # compute grad
     grad = state_exp - feat_map.T.dot(svf) - gp
+    print(feat_map.T.dot(svf), grad)
+    print(grad.shape)
     #print("sum grad: ", sum(grad))
     # update params
     theta_new = theta + lr * grad

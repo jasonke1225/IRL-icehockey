@@ -57,6 +57,7 @@ class MarkovGame(object):
         trans = {}
 
         def insert2dict(s, a, nx_s):
+            print(s, a, nx_s)
             if s in trans:
                 to_dict = trans[s]
                 key = a + '+' + nx_s
@@ -219,5 +220,5 @@ class MarkovGame(object):
         return self.s_a_nxs[key]
                 
 if __name__ == '__main__':
-    check_csv_seq('/home/yudong/Documents/Slgq/data','5665.csv')
-    mg = MarkovGame('/home/yudong/Documents/Slgq/data')
+    check_csv_seq('/home/jasonke/桌面/data_science_project/IRL-icehockey/result','5665.csv')
+    mg = MarkovGame('/home/jasonke/桌面/data_science_project/IRL-icehockey/result')
