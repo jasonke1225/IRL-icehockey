@@ -1,24 +1,42 @@
 import csv
-from mkv.markovGame import location
-from mkv.markovGame import acts
+from mkv.markovGame_badminton import acts
 
 def get_events(csv_dir, f):
     events = []
+    pre_s, pre_a = '', ''
     with open(csv_dir+'/'+f, newline='') as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            act      = row['act']
-            goalDiff = row['goalDiff']
-            manPower = row['manPower']
-            period   = row['period']
-            xCoord   = float(row['xCoord'])
-            yCoord   = float(row['yCoord'])
-            HorA     = row['H/A']
-            loc      = location(xCoord, yCoord)
+            act          = row['type']
+            # goalDiff   = row['goalDiff']
+            # period     = row['period']
+            player_loc   = row['player_location_area']
+            opponent_loc = row['opponent_location_area']
+            opponent_act = pre_a
+            HorA         = row['player']
+            is_point     = row['server']
+            winner       = row['getpoint_player']
 
-            s = goalDiff + ',' + manPower + ',' + period + ',' + loc + ',' + HorA
+            # print(type(act), type(player_loc), type(opponent_loc), type(opponent_act), type(HorA))
+            s = player_loc + ',' + opponent_loc + ',' + opponent_act + ',' + HorA
             a = str(acts.index(act))
+            if is_point == str(1):
+                s = ',,,'+HorA
             events.append((s,a))
+
+            pre_s = s
+            pre_a = a
+            
+            
+            if is_point == str(3):
+                """
+                Add win state if get point
+                """
+                termional_state = '*,*,*,*,'+winner
+                events.append((termional_state,''))
+                pre_s = ''
+                pre_a = ''
+
     return events
 
 def curr_s_a(events, idx):
@@ -50,22 +68,21 @@ def extract_demonstrations(csv_dir, f, act = False, clip = True):
     events = get_events(csv_dir, f)
     trajs = []
     episode = []
+
     for idx in range(len(events)):
         s, a = curr_s_a(events, idx)
         episode.append((s,a)) if act else episode.append(s)
         
-        if a == str(acts.index('goal')):
-            nx_s = next_s(events, idx)
-            episode.append((nx_s, 'goal')) if act else episode.append(nx_s)
+        if s[:-1] == '*,*,*,*,':
             trajs.append(episode)
-
             episode = []
         else:
             continue
     if episode != []:
         trajs.append(episode)
 
-    trajs_select = [episode for episode in trajs if len(episode)>150]
+    # trajs_select = [episode for episode in trajs if len(episode)>150]
+    trajs_select = [episode for episode in trajs]
 
     # it is optinal if you want to make trajs shorter
     if clip:

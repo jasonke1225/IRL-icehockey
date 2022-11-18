@@ -18,11 +18,13 @@ def normalize(vals):
     max_val = np.max(vals)
     return (vals - min_val) / (max_val - min_val)
 
+### 根據feat_map計算各個state的經過次數
 def compute_state_expectation(feat_map, mdp, trajs):
     """
     compute state visit expectation from the demostration trajs
     """
     state_exp = np.zeros([feat_map.shape[1]])
+    # goal視為一個episode
     for episode in trajs:
         for step in episode:
             state_idx = mdp.s2idx[step]
@@ -31,6 +33,7 @@ def compute_state_expectation(feat_map, mdp, trajs):
 
     return state_exp
 
+### 利用MDP可以獲得(真正的state經過次數+可能的distribution)
 def compute_state_visit_freq(feat_map, mdp, trajs, policy, deterministic):
     """
     compute the expected state visit frequency under policy
@@ -47,7 +50,6 @@ def compute_state_visit_freq(feat_map, mdp, trajs, policy, deterministic):
     T = max(t_list)
     # mu[s, t] is the prob of visiting state s at time t
     mu = np.zeros([N_STATES, T])
-
     for episode in trajs:
         begin_idx = mdp.s2idx[ episode[0] ]
         mu[begin_idx, 0] += 1
@@ -93,8 +95,8 @@ def maxent_irl(feat_map, mdp, gamma, trajs, theta, rbg, lr, deterministic=False)
     # compute reward
     reward = np.dot(feat_map, theta)
     
-    print(reward.shape)
-    print(np.array(theta).shape)
+    # print(reward.shape)
+    # print(np.array(theta).shape)
     # compute policy
     _, policy = value_iteration(mdp, reward, gamma, error=0.01, deterministic=deterministic)
     # print(policy)
@@ -105,13 +107,13 @@ def maxent_irl(feat_map, mdp, gamma, trajs, theta, rbg, lr, deterministic=False)
     gp = gp * (reward - rbg)
     # compute grad
     grad = state_exp - feat_map.T.dot(svf) - gp
-    print(feat_map.T.dot(svf), grad)
-    print(grad.shape)
-    #print("sum grad: ", sum(grad))
+    # print(feat_map.T.dot(svf), grad)
+    # print(grad.shape)
+    # print("sum grad: ", sum(grad))
     # update params
     theta_new = theta + lr * grad
     # compute new reward
     reward_new = np.dot(feat_map, theta_new)
 
-    return theta_new, normalize_range(reward_new, 0, 2)
+    return theta_new, normalize_range(reward_new, 0, 2), grad
 

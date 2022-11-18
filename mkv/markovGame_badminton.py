@@ -1,44 +1,8 @@
 import os
 import csv
 
-def check_csv_seq(csv_dir, f):
-    gt_list = []
-    with open(csv_dir+'/'+f, newline='') as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            gameTime = row['gameTime']
-            gt_list.append(gameTime)
-    inc = all(float(x)<=float(y) for x, y in zip(gt_list, gt_list[1:]))
-    if not inc:
-        raise Exception('This csv file is not in gameTime increasing order:', f)
-
-def location(x, y):
-    """
-    Divide rink into six block
-    """
-    ###########
-    # 1 |2| 3 #
-    #---|+|---#
-    # 4 |5| 6 #
-    ###########
-    if x < -25 and y > 0:
-        return str(1)
-    elif x >= -25 and x < 25 and y > 0:
-        return str(2)
-    elif x >= 25 and y > 0:
-        return str(3)
-    elif x < -25 and y <= 0:
-        return str(4)
-    elif x >= -25 and x < 25 and y <= 0:
-        return str(5)
-    elif x >= 25 and y <= 0:
-        return str(6)
-
-acts = ['assist', 'block', 'carry', 'check', 'controlledbreakout','controlledentryagainst',
-                    'dumpin','dumpinagainst','dumpout','faceoff','goal','icing','lpr','offside','pass',
-                    'pass1timer','penalty','pressure','pscarry','pscheck','pslpr','pspuckprotection',
-                    'puckprotection','reception','receptionprevention','shot','shot1timer',
-                    'socarry','socheck','sogoal','solpr','sopuckprotection','soshot']
+acts = ['切球', '勾球', '小平球', '平球', '後場抽平球', '挑球', '推球', '撲球', '擋小球', '放小球',
+       '未知球種', '殺球', '發短球', '發長球', '過度切球', '長球', '防守回抽', '防守回挑', '點扣']
 
 class MarkovGame(object):
 
@@ -72,42 +36,43 @@ class MarkovGame(object):
 
         for f in os.listdir(csv_dir):
             # first check if data in gameTime increasing order
-            check_csv_seq(csv_dir, f) 
+            # check_csv_seq(csv_dir, f) 
+            print('check data for correct order')
 
             pre_s, pre_a = '', ''
             with open(csv_dir+'/'+f, newline='') as csv_file:
                 reader = csv.DictReader(csv_file)
                 for row in reader:
-                    act      = row['act']
-                    goalDiff = row['goalDiff']
-                    manPower = row['manPower']
-                    period   = row['period']
-                    xCoord   = float(row['xCoord'])
-                    yCoord   = float(row['yCoord'])
-                    HorA     = row['H/A']
-                    loc      = location(xCoord, yCoord)
+                    act          = row['type']
+                    # goalDiff   = row['goalDiff']
+                    # period     = row['period']
+                    player_loc   = row['player_location_area']
+                    opponent_loc = row['opponent_location_area']
+                    opponent_act = pre_a
+                    HorA         = row['player']
+                    is_point     = row['server']
+                    winner       = row['getpoint_player']
 
-                    #print(type(act), type(goalDiff), type(manPower), type(period), type(HorA))
-                    s = goalDiff + ',' + manPower + ',' + period + ',' + loc + ',' + HorA
+                    # print(type(act), type(player_loc), type(opponent_loc), type(opponent_act), type(HorA))
+                    s = player_loc + ',' + opponent_loc + ',' + opponent_act + ',' + HorA
                     a = str(self.acts.index(act))
                     
                     if pre_s == '' and pre_a == '':
-                        pre_s = s
-                        pre_a = a
-                    elif pre_a == str(self.acts.index('goal')):
-                        """
-                        Add goal state after 'goal' action for convenience
-                        """
-                        if pre_s[-1] == 'H':
-                            insert2dict(pre_s, pre_a, '*,*,*,*,H')
-                        if pre_s[-1] == 'A':
-                            insert2dict(pre_s, pre_a, '*,*,*,*,A')
-                        pre_s = s
-                        pre_a = a
+                        pass
                     else:
                         insert2dict(pre_s, pre_a, s)
-                        pre_s = s
-                        pre_a = a
+                    pre_s = s
+                    pre_a = a
+                    
+                    if is_point == str(1):
+                        pre_s = ',,,'+HorA
+                    elif is_point == str(3):
+                        """
+                        Add win state if get point
+                        """
+                        insert2dict(pre_s, pre_a, '*,*,*,*,' + winner)
+                        pre_s = ''
+                        pre_a = ''
         return trans
 
     def _decomposition(self):
@@ -117,7 +82,9 @@ class MarkovGame(object):
         s_a_freq     = {} # a ditt: {state,action : frequency}
         s_a_nxs      = {} # a dict: {state,action : [list of next state]}
         s_a_nxs_freq = {} # a dict: {state,action,nx state : frequency}
-
+        
+        for s in self.trans.keys():
+            pre_s[s] = []
         for s in self.trans.keys():
             to_dict = self.trans[s]
             to_keys = to_dict.keys()
@@ -164,11 +131,11 @@ class MarkovGame(object):
                     s_a_nxs_freq[s_and_a_and_nxs]  = num
 
         tmp = [s for s in self.trans.keys()]
-        tmp.append('*,*,*,*,H')
         tmp.append('*,*,*,*,A')
+        tmp.append('*,*,*,*,B')
 
         self.s            = tmp
-        self.end_s        = ['*,*,*,*,H','*,*,*,*,A']
+        self.end_s        = ['*,*,*,*,A','*,*,*,*,B']
         self.s2idx        = {tmp[i]:i for i in range(len(tmp))}
         self.pre_s        = pre_s
         self.s_a          = s_a
@@ -218,6 +185,5 @@ class MarkovGame(object):
         key = '%s+%s'%(s, a)
         return self.s_a_nxs[key]
                 
-if __name__ == '__main__':
-    check_csv_seq('/home/jasonke/桌面/data_science_project/IRL-icehockey/result','5665.csv')
-    mg = MarkovGame('/home/jasonke/桌面/data_science_project/IRL-icehockey/result')
+
+# class partialMDP():
