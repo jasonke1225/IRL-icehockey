@@ -106,7 +106,7 @@ def maxent_irl(feat_map, mdp, gamma, trajs, theta, rbg, lr, deterministic=False)
     gp = 2 * np.exp(-1 * np.power(reward - rbg, 2) / 2)
     gp = gp * (reward - rbg)
     # compute grad
-    grad = state_exp - feat_map.T.dot(svf) - gp
+    grad = state_exp - feat_map.T.dot(svf) #- gp
     # print(feat_map.T.dot(svf), grad)
     # print(grad.shape)
     # print("sum grad: ", sum(grad))

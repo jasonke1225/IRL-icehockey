@@ -1,14 +1,15 @@
 import os
 import csv
 
-acts = ['切球', '勾球', '小平球', '平球', '後場抽平球', '挑球', '推球', '撲球', '擋小球', '放小球',
+acts = ['等待發球', '切球', '勾球', '小平球', '平球', '後場抽平球', '挑球', '推球', '撲球', '擋小球', '放小球',
        '未知球種', '殺球', '發短球', '發長球', '過度切球', '長球', '防守回抽', '防守回挑', '點扣']
 
 class MarkovGame(object):
 
-    def __init__(self, csv_dir):
+    def __init__(self, csv_dir, ignore_team='B'):
         self.csv_dir = csv_dir
         self.acts = acts
+        self.team = ignore_team
         self.trans = self._build_transition(csv_dir)
         self._decomposition()
 
@@ -21,6 +22,8 @@ class MarkovGame(object):
         trans = {}
 
         def insert2dict(s, a, nx_s):
+            # print(s, a, nx_s)
+            # input()
             if s in trans:
                 to_dict = trans[s]
                 key = a + '+' + nx_s
@@ -34,12 +37,13 @@ class MarkovGame(object):
                 to_dict[key] = 1
                 trans[s] = to_dict
 
-        for f in os.listdir(csv_dir):
+        file_all = os.listdir(csv_dir)
+        file_all.sort()
+        for f in file_all:
             # first check if data in gameTime increasing order
             # check_csv_seq(csv_dir, f) 
             print('check data for correct order')
-
-            pre_s, pre_a = '', ''
+            pre_s, pre_a, oppo_act = '', '', ''
             with open(csv_dir+'/'+f, newline='') as csv_file:
                 reader = csv.DictReader(csv_file)
                 for row in reader:
@@ -48,10 +52,33 @@ class MarkovGame(object):
                     # period     = row['period']
                     player_loc   = row['player_location_area']
                     opponent_loc = row['opponent_location_area']
-                    opponent_act = pre_a
+                    opponent_act = oppo_act
                     HorA         = row['player']
                     is_point     = row['server']
                     winner       = row['getpoint_player']
+
+                    if pre_s == '' and pre_a == '' and winner is not '':
+                        pre_s = ',,,'+HorA
+                        pre_a = '0'
+                        insert2dict(pre_s, pre_a, '*,*,*,' + winner)
+                        pre_s = ''
+                        pre_a = ''
+                        continue
+
+                    if is_point == str(1) and HorA == self.team:
+                        oppo_act = str(self.acts.index(act))
+                        ### 對手發球
+                        pre_s = ',,,'+HorA
+                        pre_a = '0'
+                        continue
+
+                    elif HorA == self.team:
+                        oppo_act = str(self.acts.index(act))
+                        if is_point == str(3):
+                            insert2dict(pre_s, pre_a, '*,*,*,' + winner)
+                            pre_s = ''
+                            pre_a = ''
+                        continue
 
                     # print(type(act), type(player_loc), type(opponent_loc), type(opponent_act), type(HorA))
                     s = player_loc + ',' + opponent_loc + ',' + opponent_act + ',' + HorA
@@ -70,9 +97,10 @@ class MarkovGame(object):
                         """
                         Add win state if get point
                         """
-                        insert2dict(pre_s, pre_a, '*,*,*,*,' + winner)
+                        insert2dict(pre_s, pre_a, '*,*,*,' + winner)
                         pre_s = ''
                         pre_a = ''
+                    
         return trans
 
     def _decomposition(self):
@@ -131,11 +159,11 @@ class MarkovGame(object):
                     s_a_nxs_freq[s_and_a_and_nxs]  = num
 
         tmp = [s for s in self.trans.keys()]
-        tmp.append('*,*,*,*,A')
-        tmp.append('*,*,*,*,B')
+        tmp.append('*,*,*,A')
+        tmp.append('*,*,*,B')
 
         self.s            = tmp
-        self.end_s        = ['*,*,*,*,A','*,*,*,*,B']
+        self.end_s        = ['*,*,*,A','*,*,*,B']
         self.s2idx        = {tmp[i]:i for i in range(len(tmp))}
         self.pre_s        = pre_s
         self.s_a          = s_a
@@ -185,5 +213,3 @@ class MarkovGame(object):
         key = '%s+%s'%(s, a)
         return self.s_a_nxs[key]
                 
-
-# class partialMDP():

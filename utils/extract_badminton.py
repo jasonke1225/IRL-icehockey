@@ -1,9 +1,10 @@
 import csv
 from mkv.markovGame_badminton import acts
 
-def get_events(csv_dir, f):
+def get_events(csv_dir, f, ignore_team):
     events = []
-    pre_s, pre_a = '', ''
+    oppo_act = ''
+    last = '3'
     with open(csv_dir+'/'+f, newline='') as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
@@ -12,30 +13,55 @@ def get_events(csv_dir, f):
             # period     = row['period']
             player_loc   = row['player_location_area']
             opponent_loc = row['opponent_location_area']
-            opponent_act = pre_a
+            opponent_act = oppo_act
             HorA         = row['player']
             is_point     = row['server']
             winner       = row['getpoint_player']
 
-            # print(type(act), type(player_loc), type(opponent_loc), type(opponent_act), type(HorA))
+            if (is_point == str(1) and winner is not '') or (is_point == str(3) and last=='3'):
+                s = ',,,'+HorA
+                a = str(acts.index('等待發球'))
+                events.append((s,a))
+                termional_state = '*,*,*,'+winner
+                events.append((termional_state,''))
+                last='3'
+                continue
+
+            if is_point == str(1) and HorA == ignore_team:
+                oppo_act = str(acts.index(act))
+                ### 對手發球
+                s = ',,,'+HorA
+                a = str(acts.index('等待發球'))
+                events.append((s,a))
+                last='1'
+                continue
+
+            elif HorA == ignore_team:
+                oppo_act = str(acts.index(act))
+                last='1'
+                if is_point == str(3):
+                    termional_state = '*,*,*,'+winner
+                    events.append((termional_state,''))
+                    last='3'
+                continue
+
+            # print(player_loc , opponent_loc ,opponent_act , HorA)
             s = player_loc + ',' + opponent_loc + ',' + opponent_act + ',' + HorA
             a = str(acts.index(act))
             if is_point == str(1):
                 s = ',,,'+HorA
             events.append((s,a))
-
-            pre_s = s
-            pre_a = a
             
             
             if is_point == str(3):
                 """
                 Add win state if get point
                 """
-                termional_state = '*,*,*,*,'+winner
+                termional_state = '*,*,*,'+winner
                 events.append((termional_state,''))
-                pre_s = ''
-                pre_a = ''
+                last = '3'
+            else:
+                last = '1'
 
     return events
 
@@ -54,18 +80,18 @@ def next_s(events, idx):
     (s,a) = events[idx]
     if a == str(acts.index('goal')): # score a goal
         h_w = s[-1]
-        return '*,*,*,*,'+h_w
+        return '*,*,*,'+h_w
 
     # next state idx+1
     (nx_s, nx_a) = events[idx+1]
     return nx_s
 
-def extract_demonstrations(csv_dir, f, act = False, clip = True):
+def extract_demonstrations(csv_dir, f, act = False, clip = True, ignore_team='B'):
     """
     extract demostrations from play by play data
     goal is the end signal of an episode
     """
-    events = get_events(csv_dir, f)
+    events = get_events(csv_dir, f, ignore_team)
     trajs = []
     episode = []
 
@@ -73,7 +99,7 @@ def extract_demonstrations(csv_dir, f, act = False, clip = True):
         s, a = curr_s_a(events, idx)
         episode.append((s,a)) if act else episode.append(s)
         
-        if s[:-1] == '*,*,*,*,':
+        if s[:-1] == '*,*,*,':
             trajs.append(episode)
             episode = []
         else:

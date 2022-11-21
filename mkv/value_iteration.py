@@ -25,9 +25,13 @@ def value_iteration(mdp, reward, gamma, error, deterministic=True):
             if s in mdp.end_s:
                 values[s] = reward[mdp.s2idx[s]]
                 continue
+            # print(s)
             # for a in mdp.get_act(s):
-            #     print(a)
-            #     print(mdp.s2idx[s])
+            #     print('action:',a)
+            #     for nxs in mdp.get_nxs(s, a):
+            #         print(mdp.get_trans_prob(s, a, nxs))
+            #         print(reward[mdp.s2idx[s]])
+            #         print(values_tmp[nxs])
             values[s] = max(
                 [
                     sum(
