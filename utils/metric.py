@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.core.umath_tests import inner1d
-from mkv.markovGame_badminton import acts
+from mkv.markovGame_badminton import MarkovGame, acts
+from mkv.value_iteration import value_iteration
+import pickle
 
 def NLL(MDP, pi, demonstrated_trajectory, team, segmentation = 30):
     # print('MDP', MDP.s_a_nxs_freq)
@@ -16,7 +18,14 @@ def NLL(MDP, pi, demonstrated_trajectory, team, segmentation = 30):
             #     pre_s, pre_a = s, a
             #     continue
             tran_prob = MDP.s_a_nxs_freq['%s+%s+%s'%(pre_s, pre_a, s)]/MDP.s_a_freq['%s+%s'%(pre_s, pre_a)]
-            pi_prob = pi[pre_s][pre_a]/sum(pi[pre_s].values())
+            # pi_prob = pi[pre_s][pre_a]/sum(pi[pre_s].values())
+            pi_s_sum = sum(pi[pre_s].values())
+            pi_e_sum = len(acts)
+            for a_tmp in pi[pre_s]:
+                pi_e_sum -= 1
+                pi_e_sum += np.exp(pi[pre_s][a_tmp]/pi_s_sum)
+            pi_prob = pi[pre_s][pre_a]/pi_e_sum
+            
             nll_seg *=  (tran_prob* pi_prob)
             pre_s, pre_a = s, a
             
@@ -69,10 +78,8 @@ def MHD(MDP, pi, demonstrated_trajectory):
     # def traj_generate(MDP, pi):
     #     demonstrated_trajectory
 
-    
     A = np.array([s for s, a in demonstrated_trajectory])
     # B = traj_generate(MDP, pi)
-
 
     # Find pairwise distance
     D_mat = np.sqrt(inner1d(A,A)[np.newaxis].T + inner1d(B,B)-2*(np.dot(A,B.T)))
@@ -88,31 +95,42 @@ def cross_entropy(MDP, pi):
     ce_list = list()
     for s in MDP.s_a:
         ce = 0
-        pi_s_sum = 0
-        
-        for v in pi[s].values():
-            pi_s_sum += np.exp(v)
-        
+        pi_s_sum = sum(pi[s].values())
+        pi_e_sum = len(acts)
+        for a in pi[s]:
+            pi_e_sum -= 1
+            pi_e_sum += np.exp(pi[s][a]/pi_s_sum)
+
         ### softmax
-        e_sum = len(acts)
+        mdp_sum = 0
+        mdp_e_sum = len(acts)
         for a in MDP.s_a[s]:
-            e_sum -= 1
-            e_sum += np.exp(MDP.s_a_freq['%s+%s'%(s, a)])
+            mdp_sum += MDP.s_a_freq['%s+%s'%(s, a)]
+        for a in MDP.s_a[s]:
+            mdp_e_sum -= 1
+            mdp_e_sum += np.exp(MDP.s_a_freq['%s+%s'%(s, a)]/mdp_sum)
+
+        s1, s2 = list(), list()
         for a in range(len(acts)):
-            # print(MDP.s_a[s])
             if str(a) in MDP.s_a[s]:
-                # print('1')
-                demonstrated_prob = np.exp(MDP.s_a_freq['%s+%s'%(s, a)])/e_sum
-                this_prob = np.exp(pi[s][str(a)])/pi_s_sum
+                demonstrated_prob = np.exp(MDP.s_a_freq['%s+%s'%(s, a)]/mdp_sum)/mdp_e_sum
+                this_prob = np.exp(pi[s][str(a)]/pi_s_sum)/pi_e_sum
                 ce += demonstrated_prob*np.log(this_prob)
             else:
-                # print('2')
-                demonstrated_prob = 1/e_sum
-                this_prob = np.exp(pi[s][str(a)])/pi_s_sum if a in pi[s] else 1/pi_s_sum
+                demonstrated_prob = 1/mdp_e_sum
+                this_prob = np.exp(pi[s][str(a)]/pi_s_sum)/pi_e_sum if a in pi[s] else 1/pi_e_sum
                 ce += demonstrated_prob*np.log(this_prob)
+
+        # import matplotlib.pyplot as plt
+        # x = np.arange(len(s1))
+        # plt.plot(x, s1, 'r')
+        # plt.plot(x, s2, 'b')
+        # plt.show()
 
         ce_list.append(-ce)
 
-    print('ce:', sum(ce_list)/len(ce_list))
+    # print('ce:', sum(ce_list)/len(ce_list))
     return sum(ce_list)/len(ce_list)
+
+
 
